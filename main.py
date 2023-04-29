@@ -5,10 +5,7 @@ import os
 import datetime
 from data import db_session
 from data.cosmodrome import Cosmodrome
-from data.planet import Planet
 from data.tickets import Ticket
-from data.users import User
-
 app = Flask(__name__)
 
 
@@ -43,20 +40,18 @@ def ticketsToMars():
         departure = ['Олимп', 'Впадина Эллада', 'Долина Маринер', 'Кратер Гейл']
         return render_template('tickets.html', arrive=arrive, departure=departure, name='Марс')
     elif request.method == 'POST':
-        s = [request.form[i] for i in list(request.form.keys())]
+        s = [request.form['id'], request.form['start'], request.form['finish'], request.form['date'], request.form['price']]
+        return str(s)
         if not all(s):
             return render_template('smthWrong.html', message='Не хватает параметров')
         db = db_session.create_session()
         a = [i for i in db.query(Ticket).all()]
         d = []
+        for i in a:
+            if [i.id, i.price, i.finish, i.date, i.price] == s[:-1]:
+                d.append({'id': i.id, 'start': i.start, 'finish': i.finish, 'date': i.date, 'price': i.price})
+        return render_template('find_tickets.html', tickets=d)
 
-        start = db.query(Cosmodrome).filter(Cosmodrome.title == request.form['departure']).all()[0].id
-        finish = db.query(Cosmodrome).filter(Cosmodrome.title == request.form['arrival']).all()[0].id
-        fg = db.query(Ticket).filter(Ticket.start == start).filter(Ticket.finish == finish).filter(Ticket.date >= request.form['date']).all()
-        d = []
-        for i in fg:
-            d.append({'start': request.form['departure'], 'finish': request.form['arrival'], 'date': i.date, 'id': i.id, 'price': i.price})
-        return render_template('find_tickets.html', tickets=d, length=len(d))
 
 
 @app.route('/ticketsToTitan', methods=['POST', 'GET'])
@@ -67,22 +62,12 @@ def ticketsToTitan():
         departure = ['Море Кракена', 'Море Пунги', 'Лабиринт Эказ']
         return render_template('tickets.html', arrive=arrive, departure=departure, name='Титан')
     elif request.method == 'POST':
-        s = [request.form[i] for i in list(request.form.keys())]
+        s = [request.form['id'], request.form['start'], request.form['finish'], request.form['date'],
+             request.form['price']]
         if not all(s):
             return render_template('smthWrong.html', message='Не хватает параметров')
-        db = db_session.create_session()
-        a = [i for i in db.query(Ticket).all()]
-        d = []
-
-        start = db.query(Cosmodrome).filter(Cosmodrome.title == request.form['departure']).all()[0].id
-        finish = db.query(Cosmodrome).filter(Cosmodrome.title == request.form['arrival']).all()[0].id
-        fg = db.query(Ticket).filter(Ticket.start == start).filter(Ticket.finish == finish).filter(
-            Ticket.date >= request.form['date']).all()
-        d = []
-        for i in fg:
-            d.append({'start': request.form['departure'], 'finish': request.form['arrival'], 'date': i.date, 'id': i.id,
-                      'price': i.price})
-        return render_template('find_tickets.html', tickets=d, length=len(d))
+        if request.form['arrival'] == request.form['departure']:
+            return render_template('smthWrong.html')
 
 
 @app.route('/ticketsToMoon', methods=['POST', 'GET'])
@@ -93,22 +78,12 @@ def ticketsToMoon():
         departure = ['Пик Гюйгенса', 'Море Москвы', 'Кратер Королёв', 'Кратер Пастера']
         return render_template('tickets.html', arrive=arrive, departure=departure, name='Луну')
     elif request.method == 'POST':
-        s = [request.form[i] for i in list(request.form.keys())]
+        s = [request.form['id'], request.form['start'], request.form['finish'], request.form['date'],
+             request.form['price']]
         if not all(s):
             return render_template('smthWrong.html', message='Не хватает параметров')
-        db = db_session.create_session()
-        a = [i for i in db.query(Ticket).all()]
-        d = []
-
-        start = db.query(Cosmodrome).filter(Cosmodrome.title == request.form['departure']).all()[0].id
-        finish = db.query(Cosmodrome).filter(Cosmodrome.title == request.form['arrival']).all()[0].id
-        fg = db.query(Ticket).filter(Ticket.start == start).filter(Ticket.finish == finish).filter(
-            Ticket.date >= request.form['date']).all()
-        d = []
-        for i in fg:
-            d.append({'start': request.form['departure'], 'finish': request.form['arrival'], 'date': i.date, 'id': i.id,
-                      'price': i.price})
-        return render_template('find_tickets.html', tickets=d, length=len(d))
+        if request.form['arrival'] == request.form['departure']:
+            return render_template('smthWrong.html')
 
 
 @app.route('/about')
@@ -126,50 +101,6 @@ def error400(e):
     return render_template('error.html',
                            code=400,
                            mess="неправильный, некорректный запрос")
-
-
-@app.route('/register', methods=['GET', 'POST'])
-def reqister():
-    if request.method == 'GET':
-        return render_template('register.html')
-    form = request.form
-
-    s = [request.form[i] for i in list(request.form.keys())]
-    if not all(s):
-        return render_template('smthWrong.html', message='Не хватает параметров')
-
-    if form['password'] != form['confirm_password']:
-        return render_template('smthWrong.html',
-                                   message="Пароли не совпадают")
-    db_sess = db_session.create_session()
-    if db_sess.query(User).filter(User.email == form['email']).first():
-        return render_template('smthWrong.html',
-                                   message="Такой пользователь уже есть")
-
-    user = User()
-
-    user.name = form['username']
-    user.email = form['email']
-    user.photo = request.files['photo'].read()
-
-    user.age = form['age']
-
-    user.set_password(form['password'])
-    db_sess.add(user)
-    db_sess.commit()
-    return redirect('/input')
-
-
-@app.route('/input')
-def input1():
-    if form.validate_on_submit():
-        db_sess = db_session.create_session()
-        user = db_sess.query(User).filter(User.email == form.email.data).first()
-        if user and user.check_password(form.password.data):
-            login_user(user, remember=form.remember_me.data)
-            return redirect("/")
-        return render_template('login.html', message="Неправильный логин или пароль", form=form)
-    return render_template('login.html', title='Авторизация', form=form)
 
 
 @app.errorhandler(401)
@@ -387,7 +318,7 @@ def fill_rand_tickets():
     s = [(i.id, i.planet_id) for i in db.query(Cosmodrome).all()]
     s1 = [(i.id, i.planet_id) for i in db.query(Cosmodrome).filter(Cosmodrome.planet_id == 0)]
     print(s1)
-    for i in range(3 * 10 ** 4):
+    for i in range(10 ** 5):
         tik = Ticket()
         tik.id = i
         tik.date = f'{random.randint(2024, 2026)}-{str(random.randint(1, 12)).rjust(2, "0")}-{str(random.randint(1, 12)).rjust(2, "0")}'
@@ -412,4 +343,5 @@ def fill_rand_tickets():
 
 if __name__ == '__main__':
     db_session.global_init('db/data.db')
+
     app.run(port=5000, host='127.0.0.1')
